@@ -2,11 +2,12 @@ import tkinter as tk
 import requests as rq
 import bs4
 import re
+from selenium import webdriver
 
 #The following are the first part of the tracking URL for the major carriers
 usps = 'https://tools.usps.com/go/TrackConfirmAction?tLabels='
 fedex = 'https://www.fedex.com/apps/fedextrack/?tracknumbers='
-ups1 = 'https://www.ups.com/track?loc=en_US&tracknum='
+ups = 'https://www.ups.com/track?loc=en_US&tracknum='
 
 #These headers will stop the redirection loop
 headers = {
@@ -20,7 +21,7 @@ headers = {
 }
 
 #Save the tracking items in a list
-thisList = []
+trackList = []
 
 #Class that stores info about each package
 #TODO: Make the parameters private
@@ -31,32 +32,35 @@ class Trackable:
         self.origin = origin
         self.description = description
 
-
+#Creates a new item and prompts the user for details
 def newItem():
     carrier = input("Enter the carrier: \n 1. USPS \n 2. Fedex \n 3. UPS \n")
-    if(carrier == '1'):
-        newUSPS()
-    if(carrier == '2'):
-        newFedex()
-    if(carrier == '3'):
-        newUPS()
-    else:
-        return
-
-def newUSPS():
-    regexPat = "(\n)(.*)(\n\n)"
-    
     trackingNum = input("Enter the tracking number: ")
     origin = input("Enter the shipper: ")
     description = input("Enter a description: ")
     print("\n")
+    
+    if(carrier == '1'):
+        newPkg = Trackable("USPS", trackingNum, origin, description)
+        trackList.append(newPkg)
+        trackUSPS(newPkg)
+    elif(carrier == '2'):
+        newPkg = Trackable("Fedex", trackingNum, origin, description)
+        trackList.append(newPkg)
+        trackFedex(newPkg)
+    elif(carrier == '3'):
+        newPkg = Trackable("UPS", trackingNum, origin, description)
+        trackList.append(newPkg)
+        trackUPS(newPkg)
+    else:
+        return
 
-    #Store the information to a list for later access
-    newPkg = Trackable("USPS", trackingNum, origin, description)
-    thisList.append(newPkg)
+#Tracks and USPS package and prints the details to the screen
+def trackUSPS(newPkg):
+    regexPat = "(\n)(.*)(\n\n)"
     
     #This will request and save the page... but should add a try/catch block
-    uspsHTML = rq.get(usps + trackingNum, headers=headers)
+    uspsHTML = rq.get(usps + newPkg.trackingNum, headers=headers)
     uspsHTML.raise_for_status()
     uspsParser = bs4.BeautifulSoup(uspsHTML.text, 'html.parser')
 
@@ -79,13 +83,39 @@ def newUSPS():
         
     printPkg(newPkg, date, status)
 
+#Tracks and prints out a UPS package
+def trackUPS(newPkg):
+    #This will request using selenium and save the page
+    #TODO add a try catch block
+    browser = webdriver.PhantomJS()
+    browser.get(ups + newPkg.trackingNum)
+    upsHTML = browser.page_source
+    upsParser = bs4.BeautifulSoup(upsHTML, 'html.parser')
+
+    statusTag = upsParser.select('#stApp_txtPackageStatus')
+    status = statusTag[0].getText()
+
+    date = ""
+
+    printPkg(newPkg, date, status)
+
+
+#Prints out the package details to the terminal
 def printPkg(pkg, date, status):
     print("Package Arriving from: " + pkg.origin + " via " + pkg.carrier + "\n"
           "Description : " + pkg.description + "\n"
           "Tracing Number: " + pkg.trackingNum  + "\n"
           "Status: " + status + "\n"
-          "Arriving on: " + date + "\n")
+          "Arriving on: " + date + "\n\n")
 
+
+#displays all the tracked items in the list object
+#TODO: throw an exception if the carrier DNE
+def showItems():
+    for item in trackList:
+        if(item.carrier == 'USPS'):
+            trackUSPS(item)
+        
           
 def main():
     while(1):
@@ -94,8 +124,9 @@ def main():
             break
         if(option == '2'):
             newItem()
+        if(option == '1'):
+            showItems()
 
 #Call the main method on program startup
 if __name__ == "__main__":
     main()
-
