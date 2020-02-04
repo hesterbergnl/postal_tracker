@@ -4,6 +4,9 @@ import bs4
 import re
 from selenium import webdriver
 
+#  https://stackoverflow.com/questions/53657215/running-selenium-with-headless-chrome-webdriver
+
+
 #The following are the first part of the tracking URL for the major carriers
 usps = 'https://tools.usps.com/go/TrackConfirmAction?tLabels='
 fedex = 'https://www.fedex.com/apps/fedextrack/?tracknumbers='
