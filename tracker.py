@@ -36,19 +36,40 @@ headers = {
 #Save the tracking items in a list
 trackList = []
 
-#Class that stores info about each package
-#TODO: Make the parameters private
+
+"""
+Trackable class - class that stores all details of a trackable package
+
+@author Nikolai Hesterberg
+
+TODO: Make the parameters private, add getters and setters 
+"""
 class Trackable:
+    """
+    Constructor to build a trackable object
+
+    @param carrier - the carrier of the package, USPS, Fedex, or UPS supported
+    @param trackingNum - the tracking number of the package
+    @param origin - origin of the package - who shipped it
+    @param description - description of the package - what it contains
+    """
     def __init__(self, carrier, trackingNum, origin, description):
         self.carrier = carrier
         self.trackingNum = trackingNum
         self.origin = origin
         self.description = description
 
+    """
+    Status and Date of the packages.  Store the current status and expected delivery for caching
+    """
     status = ""
     date = ""
 
-#Creates a new item and prompts the user for details
+
+"""
+Creates a new package to track
+Prompts the user for package information and calls the relevant tracking method depending on the carrier
+"""
 def newItem():
     carrier = input("Enter the carrier: \n 1. USPS \n 2. Fedex \n 3. UPS \n")
     trackingNum = input("Enter the tracking number: ")
@@ -71,7 +92,14 @@ def newItem():
     else:
         return
 
-#Tracks and USPS package and prints the details to the screen
+"""
+Tracks USPS packages and then calls the print method to display the results
+
+Uses the requests python package to download the html file for the tracking page
+Doesn't use selenium because requests is faster, but it may need selenium in the future
+
+Parses the HTML file using BeautifulSoup
+"""
 def trackUSPS(newPkg):
     regexPat = "(\n)(.*)(\n\n)"
     
@@ -100,15 +128,24 @@ def trackUSPS(newPkg):
     newPkg.date = date
     newPkg.status = status
     
-    printPkg(newPkg, date, status)
+    printPkg(newPkg)
 
-#Tracks and prints out a UPS package
+"""
+Tracks UPS packages and then calls the print method to display the results
+
+Uses the selenium python package and chromedriver to save the webpage.
+Requires selenium for javascript generation.
+
+Parses the HTML file using BeautifulSoup
+"""
 def trackUPS(newPkg):
     #This will request using selenium and save the page
     #TODO add a try catch block
     browser = webdriver.Chrome(options=chrome_options)
     browser.get(ups + newPkg.trackingNum)
     upsHTML = browser.page_source
+    browser.close()
+    
     upsParser = bs4.BeautifulSoup(upsHTML, 'html.parser')
 
     statusTag = upsParser.select('#stApp_txtPackageStatus')
@@ -130,6 +167,7 @@ def trackFedex(newPkg):
     #page is slow to load, so need to wait for it to fully load
     time.sleep(3)
     fedexHTML = browser.page_source
+    browser.close()
     
     fedexParser = bs4.BeautifulSoup(fedexHTML, 'html.parser')
     
@@ -173,13 +211,20 @@ def updateItems():
         if(item.carrier == 'UPS'):
             trackUPS(item)
 
+
+
+
+
+
+
+
 #Main method - loops the main menu and waits for user input
 def main():
     while(1):
         option = input("Enter an option: \n 1. Status \n 2. New Track \n 3. Update \n 4. Exit\n");
-        if(option == '3'):
+        if(option == '4'):
             break
-        if(option == '2'):
+        if(option == '3'):
             updateItems()
         if(option == '2'):
             newItem()
