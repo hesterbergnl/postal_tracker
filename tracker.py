@@ -1,11 +1,21 @@
+'''
+Postal Tracker
+@author Nikolai Hesterberg
+'''
 import tkinter as tk
 import requests as rq
+import time
 import bs4
 import re
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 #  https://stackoverflow.com/questions/53657215/running-selenium-with-headless-chrome-webdriver
-
+# These options are used to run chrome headless (no gui) and with less overhead
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-gpu")
 
 #The following are the first part of the tracking URL for the major carriers
 usps = 'https://tools.usps.com/go/TrackConfirmAction?tLabels='
@@ -34,6 +44,9 @@ class Trackable:
         self.trackingNum = trackingNum
         self.origin = origin
         self.description = description
+
+    status = ""
+    date = ""
 
 #Creates a new item and prompts the user for details
 def newItem():
@@ -83,14 +96,17 @@ def trackUSPS(newPkg):
         
         monthYear = re.search(regexPat, monthYearFull).group(2)
         date = day + " " + monthYear
-        
+
+    newPkg.date = date
+    newPkg.status = status
+    
     printPkg(newPkg, date, status)
 
 #Tracks and prints out a UPS package
 def trackUPS(newPkg):
     #This will request using selenium and save the page
     #TODO add a try catch block
-    browser = webdriver.PhantomJS()
+    browser = webdriver.Chrome(options=chrome_options)
     browser.get(ups + newPkg.trackingNum)
     upsHTML = browser.page_source
     upsParser = bs4.BeautifulSoup(upsHTML, 'html.parser')
@@ -100,31 +116,71 @@ def trackUPS(newPkg):
 
     date = ""
 
-    printPkg(newPkg, date, status)
+    newPkg.date = date
+    newPkg.status = status
+    
+    printPkg(newPkg)
 
+#Tracks and prints out a fedex package
+def trackFedex(newPkg):
+    #This will request using selenium and save the page
+    #TODO add a try catch block
+    browser = webdriver.Chrome(options=chrome_options)
+    browser.get(fedex + newPkg.trackingNum)
+    #page is slow to load, so need to wait for it to fully load
+    time.sleep(3)
+    fedexHTML = browser.page_source
+    
+    fedexParser = bs4.BeautifulSoup(fedexHTML, 'html.parser')
+    
+    statusTag = fedexParser.select('h3.redesignStatusChevronTVC:nth-child(2)')
+    status = statusTag[0].getText()
+    
+    date = ""
+    
+    if(status.lower() == 'in transit'):
+        dateTag = fedexParser.select('.snapshotController_date')
+        date = dateTag[0].getText()
+
+    newPkg.date = date
+    newPkg.status = status
+    
+    printPkg(newPkg)
 
 #Prints out the package details to the terminal
-def printPkg(pkg, date, status):
+def printPkg(pkg):
     print("Package Arriving from: " + pkg.origin + " via " + pkg.carrier + "\n"
           "Description : " + pkg.description + "\n"
           "Tracing Number: " + pkg.trackingNum  + "\n"
-          "Status: " + status + "\n"
-          "Arriving on: " + date + "\n\n")
+          "Status: " + pkg.status + "\n"
+          "Arriving on: " + pkg.date + "\n\n")
 
 
-#displays all the tracked items in the list object
-#TODO: throw an exception if the carrier DNE
+#prints all the tracked items in the list object
 def showItems():
+    for item in trackList:
+        printPkg(item)
+        
+
+#updates all of the saved tracking information
+#TODO: Parallelize the tracking if there are a lot of items
+def updateItems():
     for item in trackList:
         if(item.carrier == 'USPS'):
             trackUSPS(item)
-        
-          
+        if(item.carrier == 'Fedex'):
+            trackFedex(item)
+        if(item.carrier == 'UPS'):
+            trackUPS(item)
+
+#Main method - loops the main menu and waits for user input
 def main():
     while(1):
-        option = input("Enter an option: \n 1. Status \n 2. New Track \n 3. Exit\n");
+        option = input("Enter an option: \n 1. Status \n 2. New Track \n 3. Update \n 4. Exit\n");
         if(option == '3'):
             break
+        if(option == '2'):
+            updateItems()
         if(option == '2'):
             newItem()
         if(option == '1'):
