@@ -153,6 +153,10 @@ def trackUPS(newPkg):
 
     date = ""
 
+    if(status.lower() == 'in transit' or status.lower() == 'out for delivery today'):
+        dateTag = upsParser.select('#stApp_scheduledDelivery')
+        date = dateTag[0].getText()
+
     newPkg.date = date
     newPkg.status = status
     
