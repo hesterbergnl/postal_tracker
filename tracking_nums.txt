@@ -1,5 +1,6 @@
-usps:  9200190221582717216825
-ups:   1Z81RF024211851469
-ups(amazon): 	1ZW6766W1393189101
+usps (etsy watch strap):  9200190221582717216825
+ups (a7iii):   1Z81RF024211851469
+ups(amazon bag): 1ZW6766W1393189101
 fedex (nordstrom shoes): 148242624264
-fedex (bh bag): 122044197480 
+fedex (bh bag): 122044197480
+fedex (35mm lens): 315692417469311
